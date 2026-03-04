@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rory — Minimal Static Site</title>
+  <meta name="description" content="A minimal, hand-coded static site scaffold." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="/">Rory</a>
+      <button id="navToggle" class="nav-toggle" aria-expanded="false" aria-controls="mainNav">Menu</button>
+      <nav id="mainNav" class="nav" hidden>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/about.html">About</a></li>
+          <li><a href="/blog/index.html">Blog</a></li>
+          <li><a href="/contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content" class="container" role="main">
+    <article class="hero">
+      <h1>Hand‑coded static site scaffold</h1>
+      <p class="lead">Fast, accessible, and easy to extend. Built with semantic HTML, responsive CSS, and minimal JavaScript.</p>
+      <p><a class="cta" href="/about.html">Learn more</a></p>
+    </article>
+
+    <section aria-labelledby="features">
+      <h2 id="features">Features</h2>
+      <ul>
+        <li>Semantic HTML and accessible navigation</li>
+        <li>Responsive layout and mobile-first CSS</li>
+        <li>Small JS for progressive enhancement</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Rory. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
