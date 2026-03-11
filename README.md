@@ -1,4 +1,4 @@
-# Minimal static scaffold
+# Project ReadMe
 
 Run locally:
 - Install Live Server extension in VS Code and click "Go Live", or
