@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Model Manager — Magnus Altus</title>
+  <meta name="description" content="Upload, rename, delete, and manage AI models locally." />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta http-equiv="x-ua-compatible" content="IE=edge" />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <div class="container" style="display:flex;align-items:center;gap:1rem;justify-content:space-between;">
+      <a class="brand" href="/" rel="home">Magnus Altus</a>
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <button id="navToggle" class="nav-toggle" aria-expanded="false" aria-controls="mainNav" aria-label="Toggle navigation">Menu</button>
+        <nav id="mainNav" class="nav" hidden aria-label="Primary">
+          <ul>
+            <li><a href="/public" rel="noopener">Home</a></li>
+            <li><a href="/public/about.html" rel="noopener">About</a></li>
+            <li><a href="/public/models/index.html" class="active" rel="noopener">Upload Model</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="content" class="container" role="main">
+    <article class="hero" aria-labelledby="page-title">
+      <h1 id="page-title">Model Manager</h1>
+      <p class="lead">Upload AI models from your device. Files are stored locally in your browser using IndexedDB. You can rename, delete, or download any model you add.</p>
+    </article>
+
+    <section aria-labelledby="upload-section" style="margin-top:1rem;">
+      <h2 id="upload-section">Upload Models</h2>
+
+      <form id="uploadForm" aria-describedby="upload-help">
+        <label for="fileInput" style="display:block;margin-bottom:0.5rem;">
+          <strong>Select model files</strong>
+        </label>
+
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+          <input id="fileInput" type="file" multiple aria-label="Choose model files" />
+          <button id="uploadBtn" type="submit" class="cta">Upload</button>
+          <button id="clearAllBtn" type="button" class="nav-toggle" title="Delete all models">Delete All</button>
+        </div>
+
+        <p id="upload-help" class="lead" style="margin-top:0.5rem;color:var(--color-text-muted);">
+          Files remain in your browser. Back them up if you need them elsewhere.
+        </p>
+      </form>
+
+      <div id="dropZone" style="margin-top:1rem;padding:1rem;border:1px dashed var(--color-border);border-radius:6px;">
+        <p style="margin:0;">Or drag and drop files here</p>
+      </div>
+
+      <div aria-live="polite" id="status" style="margin-top:0.75rem;color:var(--color-text-muted);"></div>
+    </section>
+
+    <hr style="margin:1.5rem 0;border:none;border-top:1px solid var(--color-border);" />
+
+    <section aria-labelledby="models-list">
+      <h2 id="models-list">Stored Models</h2>
+
+      <div id="emptyState" style="color:var(--color-text-muted);margin-top:0.5rem;">
+        No models yet. Upload one to get started.
+      </div>
+
+      <ul id="models" class="post-list" style="margin-top:1rem;list-style:none;padding:0;"></ul>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <p>&copy; <span id="year" aria-hidden="true"></span> Magnus Altus. All rights reserved.</p>
+      <p class="visually-hidden" aria-hidden="false">This site uses no server-side user tracking.</p>
+    </div>
+  </footer>
+
+  <script>
+  // Model Manager using IndexedDB
+  (function () {
+    const DB_NAME = 'models-db';
+    const STORE_NAME = 'models';
+    const DB_VERSION = 1;
+
+    const fileInput = document.getElementById('fileInput');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const modelsList = document.getElementById('models');
+    const status = document.getElementById('status');
+    const emptyState = document.getElementById('emptyState');
+    const dropZone = document.getElementById('dropZone');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+
+    let db;
+
+    // Initialize year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Open IndexedDB
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) {
+          reject(new Error('IndexedDB not supported in this browser.'));
+          return;
+        }
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const d = e.target.result;
+          if (!d.objectStoreNames.contains(STORE_NAME)) {
+            const store = d.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+          }
+        };
+        req.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // Add a file to the DB
+    async function addModel(file) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const record = {
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream',
+          created: new Date().toISOString(),
+          blob: file
+        };
+        const req = store.add(record);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // Get all models
+    function getAllModels() {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // Delete model by id
+    function deleteModel(id) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // Update model metadata (rename)
+    function updateModel(id, updates) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const getReq = store.get(id);
+        getReq.onsuccess = () => {
+          const record = getReq.result;
+          if (!record) {
+            reject(new Error('Record not found'));
+            return;
+          }
+          Object.assign(record, updates);
+          const putReq = store.put(record);
+          putReq.onsuccess = () => resolve(putReq.result);
+          putReq.onerror = () => reject(putReq.error);
+        };
+        getReq.onerror = () => reject(getReq.error);
+      });
+    }
+
+    // Download model blob
+    function downloadModel(record) {
+      const url = URL.createObjectURL(record.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = record.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Render list
+    async function renderList() {
+      const items = await getAllModels();
+      modelsList.innerHTML = '';
+      if (!items || items.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      items.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+      for (const item of items) {
+        const li = document.createElement('li');
+        li.style.padding = '0.75rem';
+        li.style.border = '1px solid var(--color-border)';
+        li.style.borderRadius = '6px';
+        li.style.marginBottom = '0.75rem';
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
+        li.setAttribute('data-id', item.id);
+
+        const info = document.createElement('div');
+        info.style.flex = '1 1 auto';
+        info.style.minWidth = '0';
+
+        const title = document.createElement('div');
+        title.style.display = 'flex';
+        title.style.gap = '0.5rem';
+        title.style.alignItems = 'baseline';
+
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = item.name;
+        nameEl.style.wordBreak = 'break-all';
+
+        const meta = document.createElement('div');
+        meta.style.color = 'var(--color-text-muted)';
+        meta.style.fontSize = '0.9rem';
+        meta.style.marginLeft = '0.5rem';
+        meta.textContent = `• ${formatBytes(item.size)} • ${new Date(item.created).toLocaleString()}`;
+
+        title.appendChild(nameEl);
+        title.appendChild(meta);
+
+        info.appendChild(title);
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '0.5rem';
+        actions.style.marginLeft = '1rem';
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'nav-toggle';
+        downloadBtn.type = 'button';
+        downloadBtn.textContent = 'Download';
+        downloadBtn.addEventListener('click', () => downloadModel(item));
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'nav-toggle';
+        renameBtn.type = 'button';
+        renameBtn.textContent = 'Rename';
+        renameBtn.addEventListener('click', async () => {
+          const newName = prompt('Enter new name for the model file', item.name);
+          if (newName && newName.trim() !== '' && newName !== item.name) {
+            await updateModel(item.id, { name: newName.trim() });
+            showStatus('Renamed model');
+            renderList();
+          }
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'nav-toggle';
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', async () => {
+          const ok = confirm(`Delete "${item.name}"? This cannot be undone.`);
+          if (!ok) return;
+          await deleteModel(item.id);
+          showStatus('Deleted model');
+          renderList();
+        });
+
+        actions.appendChild(downloadBtn);
+        actions.appendChild(renameBtn);
+        actions.appendChild(deleteBtn);
+
+        li.appendChild(info);
+        li.appendChild(actions);
+        modelsList.appendChild(li);
+      }
+    }
+
+    // Helpers
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showStatus(msg, timeout = 2500) {
+      status.textContent = msg;
+      clearTimeout(showStatus._t);
+      showStatus._t = setTimeout(() => {
+        status.textContent = '';
+      }, timeout);
+    }
+
+    // Upload handler
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const files = fileInput.files;
+      if (!files || files.length === 0) {
+        showStatus('No files selected');
+        return;
+      }
+      uploadBtn.disabled = true;
+      try {
+        for (const file of files) {
+          await addModel(file);
+        }
+        fileInput.value = '';
+        showStatus('Upload complete');
+        await renderList();
+      } catch (err) {
+        console.error(err);
+        showStatus('Upload failed');
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.background = '#fafafa';
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.background = 'transparent';
+    });
+    dropZone.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropZone.style.background = 'transparent';
+      const dtFiles = e.dataTransfer.files;
+      if (!dtFiles || dtFiles.length === 0) return;
+      try {
+        for (const f of dtFiles) {
+          await addModel(f);
+        }
+        showStatus('Files added');
+        renderList();
+      } catch (err) {
+        console.error(err);
+        showStatus('Failed to add files');
+      }
+    });
+
+    // Clear all
+    clearAllBtn.addEventListener('click', async () => {
+      const ok = confirm('Delete all stored models? This cannot be undone.');
+      if (!ok) return;
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.clear();
+      req.onsuccess = () => {
+        showStatus('All models deleted');
+        renderList();
+      };
+      req.onerror = () => {
+        showStatus('Failed to delete all models');
+      };
+    });
+
+    // Initialize
+    (async function init() {
+      try {
+        await openDB();
+        await renderList();
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'This browser does not support IndexedDB. Model storage is unavailable.';
+      }
+    })();
+
+    // Simple nav toggle (keeps original behavior)
+    const navToggle = document.getElementById('navToggle');
+    const mainNav = document.getElementById('mainNav');
+    navToggle.addEventListener('click', () => {
+      const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+      navToggle.setAttribute('aria-expanded', String(!expanded));
+      if (mainNav.hasAttribute('hidden')) {
+        mainNav.removeAttribute('hidden');
+      } else {
+        mainNav.setAttribute('hidden', '');
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
