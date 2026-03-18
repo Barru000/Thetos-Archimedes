@@ -9,12 +9,15 @@
   <meta http-equiv="x-ua-compatible" content="IE=edge" />
   <link rel="stylesheet" href="../styles.css" />
 </head>
+
 <body>
   <header class="site-header" role="banner">
-    <div class="container" style="display:flex;align-items:center;gap:1rem;justify-content:space-between;">
+    <div class="container header-flex">
       <a class="brand" href="/" rel="home">Magnus Altus</a>
-      <div style="display:flex;align-items:center;gap:1rem;">
+
+      <div class="header-actions">
         <button id="navToggle" class="nav-toggle" aria-expanded="false" aria-controls="mainNav" aria-label="Toggle navigation">Menu</button>
+
         <nav id="mainNav" class="nav" hidden aria-label="Primary">
           <ul>
             <li><a href="/public" rel="noopener">Home</a></li>
@@ -32,42 +35,40 @@
       <p class="lead">Upload AI models from your device. Files are stored locally in your browser using IndexedDB. You can rename, delete, or download any model you add.</p>
     </article>
 
-    <section aria-labelledby="upload-section" style="margin-top:1rem;">
+    <section aria-labelledby="upload-section" class="section-block">
       <h2 id="upload-section">Upload Models</h2>
 
-      <form id="uploadForm" aria-describedby="upload-help">
-        <label for="fileInput" style="display:block;margin-bottom:0.5rem;">
-          <strong>Select model files</strong>
-        </label>
+      <form id="uploadForm" aria-describedby="upload-help" class="card">
+        <label for="fileInput" class="label-strong">Select model files</label>
 
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+        <div class="upload-controls">
           <input id="fileInput" type="file" multiple aria-label="Choose model files" />
           <button id="uploadBtn" type="submit" class="cta">Upload</button>
-          <button id="clearAllBtn" type="button" class="nav-toggle" title="Delete all models">Delete All</button>
+          <button id="clearAllBtn" type="button" class="btn-secondary" title="Delete all models">Delete All</button>
         </div>
 
-        <p id="upload-help" class="lead" style="margin-top:0.5rem;color:var(--color-text-muted);">
+        <p id="upload-help" class="help-text">
           Files remain in your browser. Back them up if you need them elsewhere.
         </p>
       </form>
 
-      <div id="dropZone" style="margin-top:1rem;padding:1rem;border:1px dashed var(--color-border);border-radius:6px;">
+      <div id="dropZone" class="dropzone" aria-hidden="false">
         <p style="margin:0;">Or drag and drop files here</p>
       </div>
 
-      <div aria-live="polite" id="status" style="margin-top:0.75rem;color:var(--color-text-muted);"></div>
+      <div aria-live="polite" id="status" class="status-text" style="margin-top:0.75rem;color:var(--color-text-muted);"></div>
     </section>
 
-    <hr style="margin:1.5rem 0;border:none;border-top:1px solid var(--color-border);" />
+    <hr class="divider" />
 
     <section aria-labelledby="models-list">
       <h2 id="models-list">Stored Models</h2>
 
-      <div id="emptyState" style="color:var(--color-text-muted);margin-top:0.5rem;">
+      <div id="emptyState" class="empty-state" style="color:var(--color-text-muted);margin-top:0.5rem;">
         No models yet. Upload one to get started.
       </div>
 
-      <ul id="models" class="post-list" style="margin-top:1rem;list-style:none;padding:0;"></ul>
+      <ul id="models" class="model-list" style="margin-top:1rem;list-style:none;padding:0;"></ul>
     </section>
   </main>
 
